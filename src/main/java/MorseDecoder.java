@@ -300,5 +300,5 @@ public class MorseDecoder {
  * outputs:
  *          1.wav --> c
  *          2.wav --> cs125
- *          HW0.wav -->
+ *          HW0.wav --> tinyurl.com68313876
  */
