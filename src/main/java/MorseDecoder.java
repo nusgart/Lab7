@@ -31,65 +31,18 @@ public class MorseDecoder {
      * need to modify this value.
      */
     private static final int BIN_SIZE = 100;
-
     /**
-     * Compute power measurements for fixed-size bins of WAV samples.
-     * <p>
-     * We have started this function for you. You should finish it.
-     *
-     * @param inputFile the input file to process
-     * @return the double[] array of power measurements, one per bin
-     * @throws WavFileException thrown if there is a WavFile-specific IO error
-     * @throws IOException thrown on other IO errors
+     * Power threshold for power or no power. You may need to modify this value.
      */
-    private static double[] binWavFilePower(final WavFile inputFile)
-            throws IOException, WavFileException {
-
-        /*
-         * We should check the results of getNumFrames to ensure that they are safe to cast to int.
-         */
-        int totalBinCount = (int) Math.ceil(inputFile.getNumFrames() / BIN_SIZE);
-        double[] returnBuffer = new double[totalBinCount];
-
-        double[] sampleBuffer = new double[BIN_SIZE * inputFile.getNumChannels()];
-        for (int binIndex = 0; binIndex < totalBinCount; binIndex++) {
-            // Get the right number of samples from the inputFile
-            // Sum all the samples together and store them in the returnBuffer
-        }
-        return returnBuffer;
-    }
-
-    /** Power threshold for power or no power. You may need to modify this value. */
-    private static final double POWER_THRESHOLD = 10;
-
-    /** Bin threshold for dots or dashes. Related to BIN_SIZE. You may need to modify this value. */
-    private static final int DASH_BIN_COUNT = 8;
-
+    private static final double POWER_THRESHOLD = 1;
     /**
-     * Convert power measurements to dots, dashes, and spaces.
-     * <p>
-     * This function receives the result from binWavPower. It's job is to convert intervals of tone
-     * or silence into dots (short tone), dashes (long tone), or space (long silence).
-     * <p>
-     * Write this function.
-     *
-     * @param powerMeasurements the array of power measurements from binWavPower
-     * @return the Morse code string of dots, dashes, and spaces
+     * Bin threshold for a space.
      */
-    private static String powerToDotDash(final double[] powerMeasurements) {
-        /*
-         * There are four conditions to handle. Symbols should only be output when you see
-         * transitions. You will also have to store how much power or silence you have seen.
-         */
-
-        // if ispower and waspower
-        // else if ispower and not waspower
-        // else if issilence and wassilence
-        // else if issilence and not wassilence
-
-        return "";
-    }
-
+    private static final int SILENCE_BIN_COUNT = 10;
+    /**
+     * Bin threshold for dots or dashes. Related to BIN_SIZE. You may need to modify this value.
+     */
+    private static final int DASH_BIN_COUNT = 10;
     /**
      * Morse code to alpha mapping.
      *
@@ -139,6 +92,102 @@ public class MorseDecoder {
             };
 
     /**
+     * Compute power measurements for fixed-size bins of WAV samples.
+     * <p>
+     * We have started this function for you. You should finish it.
+     *
+     * @param inputFile the input file to process
+     * @return the double[] array of power measurements, one per bin
+     * @throws WavFileException thrown if there is a WavFile-specific IO error
+     * @throws IOException      thrown on other IO errors
+     */
+    private static double[] binWavFilePower(final WavFile inputFile)
+            throws IOException, WavFileException {
+
+        /*
+         * We should check the results of getNumFrames to ensure that they are safe to cast to int.
+         */
+        int totalBinCount = (int) Math.ceil(inputFile.getNumFrames() / BIN_SIZE);
+        double[] returnBuffer = new double[totalBinCount];
+
+        final int count = BIN_SIZE * inputFile.getNumChannels();
+        double[] sampleBuffer = new double[count];
+        for (int binIndex = 0; binIndex < totalBinCount; binIndex++) {
+            // Get the right number of samples from the inputFile
+            int frames = inputFile.readFrames(sampleBuffer, BIN_SIZE);
+            if (frames != BIN_SIZE){
+                System.err.println("Bad # of frames " + frames);
+            }
+            // Sum all the samples together and store them in the returnBuffer
+            double sum = 0;
+            for (double d : sampleBuffer) {
+                sum += Math.abs(d);
+            }
+            returnBuffer[binIndex] = Math.abs(sum); // / count;
+        }
+        System.out.println(java.util.Arrays.toString(returnBuffer));
+        System.out.println(returnBuffer.length);
+        return returnBuffer;
+    }
+
+    /**
+     * Convert power measurements to dots, dashes, and spaces.
+     * <p>
+     * This function receives the result from binWavPower. It's job is to convert intervals of tone
+     * or silence into dots (short tone), dashes (long tone), or space (long silence).
+     * <p>
+     * Write this function.
+     *
+     * @param powerMeasurements the array of power measurements from binWavPower
+     * @return the Morse code string of dots, dashes, and spaces
+     */
+    private static String powerToDotDash(final double[] powerMeasurements) {
+        /*
+         * There are four conditions to handle. Symbols should only be output when you see
+         * transitions. You will also have to store how much power or silence you have seen.
+         */
+        StringBuilder builder = new StringBuilder();
+        boolean wasPower = false;
+        boolean isPower;
+        int length = 0;
+        for (double pwr : powerMeasurements) {
+            isPower = pwr > POWER_THRESHOLD;
+            //
+            if (isPower && wasPower) {
+                // power
+                length++;
+            } else if (isPower && !wasPower) {
+                // transition - start of dash or dot
+                if (length > SILENCE_BIN_COUNT) {
+                    builder.append(' ');
+                }
+                System.out.println("starting dot/dash length was " + length);
+                length = 1;
+            } else if (!isPower && wasPower) {
+                // transition: end of symbol
+                if (length > DASH_BIN_COUNT) {
+                    builder.append('-');
+                } else {
+                    builder.append('.');
+                }
+                System.out.println("finishing dot/dash length was " + length);
+                length = 1;
+            } else if (!isPower && !wasPower) {
+                // silence:
+                length++;
+                System.out.println("silence");
+            }
+            wasPower = isPower;
+        }
+        // if ispower and waspower
+        // else if ispower and not waspower
+        // else if issilence and wassilence
+        // else if issilence and not wassilence
+
+        return builder.toString();
+    }
+
+    /**
      * Convert a Morse code string to alphanumeric characters using the mapping above.
      * <p>
      * Note that this will output "_" if it cannot look up a mapping. Usually this indicates that
@@ -172,7 +221,7 @@ public class MorseDecoder {
      * @param inputFile the input file to process
      * @return the decoded Morse code from the WAV file as a string
      * @throws WavFileException thrown if there is a WavFile-specific IO error
-     * @throws IOException thrown on other IO errors
+     * @throws IOException      thrown on other IO errors
      */
     public static String morseWavToString(final WavFile inputFile)
             throws IOException, WavFileException {
@@ -247,3 +296,9 @@ public class MorseDecoder {
         lineScanner.close();
     }
 }
+/*
+ * outputs:
+ *          1.wav --> c
+ *          2.wav --> cs125
+ *          HW0.wav -->
+ */
