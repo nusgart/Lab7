@@ -115,7 +115,7 @@ public class MorseDecoder {
         for (int binIndex = 0; binIndex < totalBinCount; binIndex++) {
             // Get the right number of samples from the inputFile
             int frames = inputFile.readFrames(sampleBuffer, BIN_SIZE);
-            if (frames != BIN_SIZE){
+            if (frames != BIN_SIZE) {
                 System.err.println("Bad # of frames " + frames);
             }
             // Sum all the samples together and store them in the returnBuffer
